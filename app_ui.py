@@ -21,15 +21,6 @@ import os
 import streamlit as st
 
 load_dotenv()
-<<<<<<< HEAD
-=======
-
-def get_secret(key):
-    if key in st.secrets:
-        return st.secrets[key]
-    return os.getenv(key)
-
->>>>>>> 7017da4 (new)
 
 from dotenv import load_dotenv
 import os
