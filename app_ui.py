@@ -13,9 +13,20 @@ from qdrant_client import QdrantClient
 import os
 from dotenv import load_dotenv
 load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY")
-Qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
+from dotenv import load_dotenv
+import os
+import streamlit as st
+
+load_dotenv()
+
+def get_secret(key):
+    if key in st.secrets:
+        return st.secrets[key]
+    return os.getenv(key)
+
+api_key = get_secret("GOOGLE_API_KEY")
+Qdrant_api_key = get_secret("QDRANT_API_KEY")
 # --- INITIAL SETUP & LOGGING ---
 logging.basicConfig(
     level=logging.INFO,
