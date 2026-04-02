@@ -1,0 +1,7 @@
+streamlit
+google-generativeai
+qdrant-client
+sentence-transformers
+rank-bm25
+torch
+numpy
