@@ -10,6 +10,11 @@ import logging
 import sys
 import time
 from qdrant_client import QdrantClient
+import os
+from dotenv import load_dotenv
+load_dotenv()
+api_key = os.getenv("GOOGLE_API_KEY")
+Qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
 # --- INITIAL SETUP & LOGGING ---
 logging.basicConfig(
@@ -33,7 +38,7 @@ st.markdown("""
 @st.cache_resource
 def load_resources():
     # Use your existing Gemini API Key
-    genai.configure(api_key="AIzaSyD605ZNDD7-nZdA4fWKxjHnr3SOwHVzdWQ")
+    genai.configure(api_key=api_key)
     
     llm = genai.GenerativeModel(
         model_name="gemini-2.0-flash", 
@@ -48,7 +53,7 @@ llm_model = load_resources()
 # Initialize Qdrant Client (Global)
 qdrant_client = QdrantClient(
     url="https://1ce4d383-d1a4-4135-8412-25a9813396c8.europe-west3-0.gcp.cloud.qdrant.io", 
-    api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6YWQwZjkyNGMtOGFhNi00YjM1LTgxMjMtMTQ1YTA2YTQ1MjBiIn0.1N1TYCApAZtQQQUidEah7o6k2BMEY_2juKgY3f7-IhU"
+    api_key=Qdrant_api_key
 )
 
 # --- 2. DATA LOADING & HYBRID INDEXING ---
