@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import google.generativeai as genai
 from pathlib import Path
@@ -10,32 +11,33 @@ import logging
 import sys
 import time
 from qdrant_client import QdrantClient
-import os
 from dotenv import load_dotenv
-# load_dotenv()
-# api_key = os.getenv("GOOGLE_API_KEY")
-# Qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
-from dotenv import load_dotenv
-import os
-import streamlit as st
+# --- Load local .env (for local testing) ---
+load_dotenv()  # only affects local environment, ignored on Streamlit Cloud
 
-load_dotenv()
-
-from dotenv import load_dotenv
-import os
-import streamlit as st
-
-load_dotenv()
-
+# --- Secret helper function ---
 def get_secret(key):
+    """Retrieve secret from Streamlit Cloud, else fallback to local env."""
     if key in st.secrets:
         return st.secrets[key]
     return os.getenv(key)
 
+# --- Retrieve API keys ---
 api_key = get_secret("GOOGLE_API_KEY")
 Qdrant_api_key = get_secret("QDRANT_API_KEY")
-# --- INITIAL SETUP & LOGGING ---
+
+# --- Configure Google Generative AI ---
+genai.configure(api_key=api_key)
+
+
+# Initialize Qdrant Client (Global)
+qdrant_client = QdrantClient(
+    url="https://1ce4d383-d1a4-4135-8412-25a9813396c8.europe-west3-0.gcp.cloud.qdrant.io", 
+    api_key=Qdrant_api_key
+)
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -69,11 +71,6 @@ def load_resources():
 
 llm_model = load_resources()
 
-# Initialize Qdrant Client (Global)
-qdrant_client = QdrantClient(
-    url="https://1ce4d383-d1a4-4135-8412-25a9813396c8.europe-west3-0.gcp.cloud.qdrant.io", 
-    api_key=Qdrant_api_key
-)
 
 # --- 2. DATA LOADING & HYBRID INDEXING ---
 @st.cache_data
