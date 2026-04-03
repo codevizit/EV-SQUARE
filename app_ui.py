@@ -150,7 +150,6 @@ def get_hybrid_context(query, k=2):
 
 # --- 5. THE UI LAYOUT ---
 st.title("⚡ EV Square AI Consultant")
-st.caption("Environment: Hybrid RAG + Gemini 2.0 Flash + Qdrant Cloud")
 
 # Display Chat History
 for message in st.session_state.messages:
