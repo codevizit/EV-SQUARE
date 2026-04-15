@@ -12,7 +12,7 @@ import sys
 import time
 from qdrant_client import QdrantClient
 from dotenv import load_dotenv
-
+from sentence_transformers import SentenceTransformer
 # --- Load local .env (for local testing) ---
 load_dotenv()  # only affects local environment, ignored on Streamlit Cloud
 
@@ -58,18 +58,17 @@ st.markdown("""
 # --- 1. INITIALIZE MODELS (Cached for Speed) ---
 @st.cache_resource
 def load_resources():
-    # Use your existing Gemini API Key
     genai.configure(api_key=api_key)
-    
     llm = genai.GenerativeModel(
         model_name="gemini-2.0-flash", 
         system_instruction=SYSTEM_PROMPT
     )
-    # We remove SentenceTransformer local model because we'll use 
-    # Gemini Embeddings to match your 1536-dim Qdrant vectors.
-    return llm
+    # ADD THIS: Load the local model to match your 384-dim Qdrant vectors
+    embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+    return llm, embed_model
 
-llm_model = load_resources()
+llm_model, embed_model = load_resources() # Update this line too
+
 
 
 # --- 2. DATA LOADING & HYBRID INDEXING ---
@@ -93,7 +92,7 @@ def load_knowledge_base():
     vectors_list = [point.vector for point in sorted_points]
     
     # 4. Convert vectors to Torch Tensor (Maintains dimension compatibility)
-    embeddings = torch.tensor(vectors_list) 
+    embeddings = torch.tensor(vectors_list).float()
     
     # 5. Build Sparse Index (BM25) locally from retrieved texts
     tokenized_corpus = [doc.lower().split() for doc in texts]
@@ -112,17 +111,17 @@ if "chat_session" not in st.session_state:
 
 # --- 4. HYBRID RETRIEVAL FUNCTION ---
 def get_hybrid_context(query, k=2):
-    # USE THIS EXACT STRING FROM YOUR LIST_MODELS OUTPUT
-    result = genai.embed_content(
-        model="models/gemini-embedding-001",
-        content=query,
-        task_type="retrieval_query",
-        output_dimensionality=1536
-    )
-    # Convert to tensor for your existing cos_sim logic
-    q_emb = torch.tensor(result['embedding'])
+    # REMOVE the genai.embed_content block
+    # ADD THIS: Use the same local model used for uploading
+    q_emb_numpy = embed_model.encode(query)
+    q_emb = torch.tensor(q_emb_numpy).float()
     
+    # Ensure chunk_embeddings is also float for torch.mm compatibility
+    global chunk_embeddings
+    chunk_embeddings = chunk_embeddings.float()
+
     # 1. Dense Score (Semantic)
+    # This will now be 384 vs 384 -> Success!
     dense_scores = util.cos_sim(q_emb, chunk_embeddings)[0].tolist()
     
     # --- GUARDRAIL: Check Max Similarity ---
