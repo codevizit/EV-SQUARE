@@ -49,40 +49,48 @@ logger = logging.getLogger("EV-Square-Bot")
 st.set_page_config(page_title="EV Square AI Consultant", page_icon="⚡", layout="centered")
 
 # --- STYLE CUSTOMIZATION ---
+# --- STYLE CUSTOMIZATION ---
 st.markdown("""
     <style>
-    /* 1. Sets the background for the entire app */
+    /* 1. Full App Background */
     .stApp {
         background-color: #061a0c;
     }
 
-    /* 2. Fixes the Header/Toolbar transparency */
+    /* 2. Seamless Header */
     header, [data-testid="stHeader"] {
         background-color: rgba(0,0,0,0) !important;
     }
 
-    /* 3. Sets Sidebar color to match the deep dark green */
+    /* 3. Dark Sidebar */
     [data-testid="stSidebar"] {
         background-color: #0b2212;
     }
 
-    /* 4. Styles Chat Messages to look like Screenshot 2 */
+    /* 4. Chat Bubbles */
     [data-testid="stChatMessage"] {
-        background-color: #112d1a; /* Slightly lighter green for the bubble */
+        background-color: #112d1a;
         border-radius: 10px;
         margin-bottom: 10px;
         border: 1px solid #1a3d25;
     }
 
-    /* 5. Customizing the Chat Input box area */
+    /* 5. THE FIX: Removing the Black Chat Bar */
+    /* This targets the outer container that stays black by default */
+    .stChatInputContainer {
+        background-color: #061a0c !important; /* Matches main background */
+        border-top: 1px solid #1a3d25 !important;
+    }
+
+    /* This targets the inner input box */
     [data-testid="stChatInput"] {
-        background-color: #061a0c;
-        border-radius: 10px;
+        background-color: #112d1a !important; /* Slightly lighter like bubbles */
+        border-radius: 10px !important;
     }
     
-    /* 6. Text color fix for readability */
-    .stMarkdown p {
-        color: #e0e0e0;
+    /* 6. Text color fix */
+    .stMarkdown p, [data-testid="stChatInput"] textarea {
+        color: #e0e0e0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
