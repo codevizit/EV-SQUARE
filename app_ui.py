@@ -13,6 +13,7 @@ import time
 from qdrant_client import QdrantClient
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
+import requests
 # --- Load local .env (for local testing) ---
 load_dotenv()  # only affects local environment, ignored on Streamlit Cloud
 
@@ -50,7 +51,7 @@ st.set_page_config(page_title="EV Square AI Consultant", page_icon="⚡", layout
 # --- STYLE CUSTOMIZATION ---
 st.markdown("""
     <style>
-    .main { background-color: #f5f7f9; }
+    .main { background-color: #27ae60; }
     .stChatMessage { border-radius: 15px; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
@@ -155,6 +156,45 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+
+
+def handle_chat_request(history):
+    # 1. Map Streamlit roles to Gemini roles & format parts
+    formatted_history = []
+    for msg in history[:-1]:  # All previous turns
+        role = "model" if msg["role"] == "assistant" else "user"
+        formatted_history.append({
+            "role": role,
+            "parts": [{"text": msg["content"]}]
+        })
+
+    # 2. Get current query
+    user_query = history[-1]["content"]
+    
+    # 3. Retrieval & Guardrail
+    context, is_confident = get_hybrid_context(user_query)
+
+    if not is_confident:
+        full_prompt = (
+            "The user's question is not covered in our technical documents. "
+            "Strictly inform them you don't have information and offer support."
+            f"\nUSER QUESTION: {user_query}"
+        )
+    else:
+        # We inject context ONLY into the final message sent to the model
+        full_prompt = f"CONTEXT FROM DOCUMENTS:\n{context}\n\nUSER QUESTION: {user_query}"
+
+    # 4. Stateless Chat Call
+    # Use the formatted history (model/user roles)
+    temp_chat = llm_model.start_chat(history=formatted_history) 
+    
+    # Send the augmented prompt
+    response_stream = temp_chat.send_message(full_prompt, stream=True)
+    
+    return response_stream
+
+
+
 # --- CHAT INPUT & LOGIC ---
 if prompt := st.chat_input("Ask about EV Square..."):
     start_time = time.time()
@@ -173,56 +213,41 @@ if prompt := st.chat_input("Ask about EV Square..."):
     else:
         st.session_state.last_request_time = current_time
 
-        # 2. Add User Message to UI
+        # 2. Add User Message to UI State
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # 3. Retrieval & Guardrail
-        context, is_confident = get_hybrid_context(prompt)
-
-        if not is_confident:
-            full_prompt = (
-                "The user's question is not covered in our technical documents. "
-                "Strictly inform the user that you don't have information on this specific topic "
-                "and offer to connect them to our support team. "
-                f"USER QUESTION: {prompt}"
-            )
-            logger.warning(f"Guardrail Tripped for: {prompt}")
-        else:
-            full_prompt = f"CONTEXT:\n{context}\n\nUSER QUESTION: {prompt}"
-            logger.info(f"RAG Match Found (Confident)")
-
-        # 4. Assistant Generation (Streaming)
+        # 3. Assistant Generation (Stateless)
         with st.chat_message("assistant"):
             try:
-                response_stream = st.session_state.chat_session.send_message(
-                    full_prompt, 
-                    stream=True
-                )
+                # Call the stateless handler with the full history
+                # This function now handles RAG internally
+                response_stream = handle_chat_request(st.session_state.messages)
                 
                 def stream_generator():
                     for chunk in response_stream:
                         if chunk.text:
                             yield chunk.text
 
-                # Stream to UI
+                # Stream to UI and capture the full text
                 full_response = st.write_stream(stream_generator())
                 
-                # Metrics & Final History Update
+                # 4. Final Metrics & History Update
                 latency = round(time.time() - start_time, 2)
                 logger.info(f"Response completed in {latency}s")
+                
+                # Update UI history state
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
                 
             except Exception as e:
                 st.error(f"Error: {e}")
+                logger.error(f"Chat Error: {str(e)}")
 
 # Sidebar Info
 with st.sidebar:
     st.header("System Status")
-    st.success("Connected to Gemini API")
-    st.info(f"Knowledge Base: {len(chunk_texts)} Chunks Loaded")
     if st.button("Clear Chat History"):
         st.session_state.messages = []
-        st.session_state.chat_session = llm_model.start_chat(history=[])
+        # st.session_state.chat_session = llm_model.start_chat(history=[])
         st.rerun()
