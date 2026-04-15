@@ -51,27 +51,38 @@ st.set_page_config(page_title="EV Square AI Consultant", page_icon="⚡", layout
 # --- STYLE CUSTOMIZATION ---
 st.markdown("""
     <style>
-    /* 1. Change the FULL app background */
+    /* 1. Sets the background for the entire app */
     .stApp {
-        background-color: #27ae60;
+        background-color: #061a0c;
     }
 
-    /* 2. Style the Chat Messages specifically */
-    /* This targets the container for both user and assistant messages */
+    /* 2. Fixes the Header/Toolbar transparency */
+    header, [data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+    }
+
+    /* 3. Sets Sidebar color to match the deep dark green */
+    [data-testid="stSidebar"] {
+        background-color: #0b2212;
+    }
+
+    /* 4. Styles Chat Messages to look like Screenshot 2 */
     [data-testid="stChatMessage"] {
-        border-radius: 15px;
+        background-color: #112d1a; /* Slightly lighter green for the bubble */
+        border-radius: 10px;
         margin-bottom: 10px;
-        padding: 10px;
+        border: 1px solid #1a3d25;
     }
 
-    /* 3. Optional: Make the text easier to read on green */
-    [data-testid="stChatMessage"] p {
-        color: #1a1a1a;
+    /* 5. Customizing the Chat Input box area */
+    [data-testid="stChatInput"] {
+        background-color: #061a0c;
+        border-radius: 10px;
     }
     
-    /* 4. Fix Top Header visibility */
-    header {
-        background-color: rgba(0,0,0,0) !important;
+    /* 6. Text color fix for readability */
+    .stMarkdown p {
+        color: #e0e0e0;
     }
     </style>
     """, unsafe_allow_html=True)
