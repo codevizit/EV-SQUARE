@@ -52,49 +52,54 @@ st.set_page_config(page_title="EV Square AI Consultant", page_icon="⚡", layout
 # --- STYLE CUSTOMIZATION ---
 st.markdown("""
     <style>
-    /* 1. Full App Background */
+    /* 1. Sets the background for the entire app */
     .stApp {
         background-color: #061a0c;
     }
 
-    /* 2. Seamless Header */
+    /* 2. Fixes the Header/Toolbar transparency */
     header, [data-testid="stHeader"] {
         background-color: rgba(0,0,0,0) !important;
     }
 
-    /* 3. Dark Sidebar */
+    /* 3. Sets Sidebar color to match the deep dark green */
     [data-testid="stSidebar"] {
         background-color: #0b2212;
     }
 
-    /* 4. Chat Bubbles */
+    /* 4. Styles Chat Messages bubbles */
     [data-testid="stChatMessage"] {
-        background-color: #112d1a;
+        background-color: #112d1a; 
         border-radius: 10px;
         margin-bottom: 10px;
         border: 1px solid #1a3d25;
     }
 
-    /* 5. THE FIX: Removing the Black Chat Bar */
-    /* This targets the outer container that stays black by default */
-    .stChatInputContainer {
-        background-color: #061a0c !important; /* Matches main background */
-        border-top: 1px solid #1a3d25 !important;
+    /* 5. THE FIX: Remove the black background from the chat input container */
+    [data-testid="stChatInputContainer"] {
+        background-color: rgba(0, 0, 0, 0) !important;
+        border: none !important;
     }
 
-    /* This targets the inner input box */
+    /* 6. Style the actual input box to match your dark theme */
     [data-testid="stChatInput"] {
-        background-color: #112d1a !important; /* Slightly lighter like bubbles */
+        background-color: #112d1a !important;
+        border: 1px solid #1a3d25 !important;
         border-radius: 10px !important;
     }
-    
-    /* 6. Text color fix */
-    .stMarkdown p, [data-testid="stChatInput"] textarea {
+
+    /* 7. Text color and caret color for the input field */
+    [data-testid="stChatInput"] textarea {
         color: #e0e0e0 !important;
+        caret-color: #e0e0e0 !important;
+    }
+    
+    /* 8. Text color fix for general readability */
+    .stMarkdown p {
+        color: #e0e0e0;
     }
     </style>
     """, unsafe_allow_html=True)
-
 # --- 1. INITIALIZE MODELS (Cached for Speed) ---
 @st.cache_resource
 def load_resources():
