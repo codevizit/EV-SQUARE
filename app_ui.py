@@ -155,7 +155,7 @@ if "chat_session" not in st.session_state:
     st.session_state.chat_session = llm_model.start_chat(history=[])
 
 # --- 4. HYBRID RETRIEVAL FUNCTION ---
-def get_hybrid_context(query, k=2):
+def get_hybrid_context(query, k=5):
     # REMOVE the genai.embed_content block
     # ADD THIS: Use the same local model used for uploading
     q_emb_numpy = embed_model.encode(query)
