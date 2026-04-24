@@ -295,11 +295,10 @@
 #         st.session_state.messages = []
 #         # st.session_state.chat_session = llm_model.start_chat(history=[])
 #         st.rerun()
-
 import os
 import streamlit as st
-from groq import Groq # Add this
-from openai import OpenAI
+from groq import Groq 
+# Using only Groq client to avoid the Pydantic DLL block we saw earlier
 from sentence_transformers import util, SentenceTransformer
 from rank_bm25 import BM25Okapi
 import numpy as np
@@ -319,7 +318,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("EV_SQUARE_PROD")
 
-# Explicitly load .env file
+# Load .env for local testing; Streamlit Cloud will ignore this and use Secrets
 load_dotenv()
 
 st.set_page_config(page_title="EV Square AI Consultant", page_icon="⚡", layout="centered")
@@ -353,20 +352,19 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. FAIL-SAFE SECRET RETRIEVAL (Updated for .env Priority) ---
+# --- 2. FAIL-SAFE SECRET RETRIEVAL ---
 def get_secret(key):
-    """Priority: Streamlit Secrets (Cloud), then .env (Local)."""
-    # 1. Check Streamlit Secrets (Works on Cloud and Local if secrets.toml exists)
+    """Checks Streamlit Secrets first (Cloud), then environment variables (Local)."""
+    # Try Streamlit Secrets first
     if key in st.secrets:
         return st.secrets[key]
-    
-    # 2. Check Environment Variables (Local .env)
+    # Fallback to .env / OS environment
     val = os.getenv(key)
     if val:
         return val
         
     logger.critical(f"DEPLOYMENT ERROR: {key} is missing!")
-    st.error(f"Configuration Error: {key} not found.")
+    st.error(f"Configuration Error: {key} not found. Please check Secrets/Env.")
     st.stop()
 
 # --- 3. RESOURCE LOADING WITH ERROR HANDLING ---
@@ -382,7 +380,9 @@ def load_shared_resources():
 
         embed_model = SentenceTransformer("all-MiniLM-L6-v2")
         
+        # Increased limit to ensure we get all data for BM25
         response, _ = q_client.scroll(collection_name="EV_SQUARE_COLLECTION", limit=1000, with_payload=True, with_vectors=True)
+        
         if not response:
             logger.warning("Knowledge base retrieved is EMPTY.")
             return embed_model, [], torch.tensor([]), None
@@ -407,7 +407,7 @@ embed_model, chunk_texts, chunk_embeddings, bm25_index = load_shared_resources()
 # --- 4. RETRIEVAL WITH SCORE LOGGING ---
 def get_hybrid_context(query, k=5):
     try:
-        if not chunk_texts:
+        if not chunk_texts or embed_model is None:
             return "No context available.", False
 
         start_retrieval = time.time()
@@ -430,20 +430,16 @@ def get_hybrid_context(query, k=5):
         duration = round(time.time() - start_retrieval, 3)
         logger.info(f"RETRIEVAL_SUCCESS: Sim={max_sim:.2f}, Time={duration}s")
         
+        # Threshold for RAG confidence
         return context, (max_sim > 0.4)
     except Exception as e:
         logger.error(f"RETRIEVAL_ERROR: {str(e)}")
         return "Retrieval failed.", False
 
-# --- 5. STATELESS CHAT WITH API ERROR HANDLING ---
-# Change your import at the top
-
-# from openai import OpenAI # You can remove or comment this out to avoid the DLL block
-
-
+# --- 5. STATELESS CHAT WITH GROQ CLIENT ---
 def handle_groq_chat(messages):
     try:
-        # Use the Groq client which you just proved works in Jupyter
+        # Initializing the Groq-specific client to bypass OpenAI dependency issues
         client = Groq(
             api_key=get_secret("GROQ_API_KEY"),
             timeout=30.0
@@ -453,9 +449,12 @@ def handle_groq_chat(messages):
         context, is_confident = get_hybrid_context(user_query)
 
         formatted_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        
+        # Build conversation history
         for msg in messages[:-1]:
             formatted_messages.append({"role": msg["role"], "content": msg["content"]})
         
+        # Inject RAG context if similarity is high
         if is_confident:
             prompt_content = f"CONTEXT:\n{context}\n\nUSER QUESTION: {user_query}"
         else:
@@ -463,7 +462,7 @@ def handle_groq_chat(messages):
             
         formatted_messages.append({"role": "user", "content": prompt_content})
 
-        # Using the exact model and client setup from your successful test
+        # Return the stream using the successful model from your test
         return client.chat.completions.create(
             model="openai/gpt-oss-120b", 
             messages=formatted_messages,
@@ -473,6 +472,7 @@ def handle_groq_chat(messages):
     except Exception as e:
         logger.error(f"LLM_GATEWAY_ERROR: {str(e)}")
         raise e
+
 # --- 6. UI & MAIN LOOP ---
 st.title("⚡ EV Square AI")
 
@@ -495,6 +495,7 @@ if prompt := st.chat_input("Ask about EV Square..."):
             def safe_stream_gen():
                 try:
                     for chunk in response_stream:
+                        # Groq stream chunk access
                         if chunk.choices and chunk.choices[0].delta.content:
                             yield chunk.choices[0].delta.content
                 except Exception as stream_err:
@@ -504,4 +505,6 @@ if prompt := st.chat_input("Ask about EV Square..."):
             full_response = st.write_stream(safe_stream_gen())
             st.session_state.messages.append({"role": "assistant", "content": full_response})
         except Exception as e:
-            st.error("Connection failed. Please check your internet or API keys.")
+            # Enhanced error feedback for debugging in the UI
+            st.error(f"Chat Error: {str(e)}")
+            logger.error(f"CHAT_EXECUTION_FAILED: {str(e)}", exc_info=True)
