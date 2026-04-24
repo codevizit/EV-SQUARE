@@ -8,3 +8,5 @@ numpy
 dotenv 
 torchvision
 openai
+groq
+python-dotenv
