@@ -298,6 +298,7 @@
 
 import os
 import streamlit as st
+from groq import Groq # Add this
 from openai import OpenAI
 from sentence_transformers import util, SentenceTransformer
 from rank_bm25 import BM25Okapi
@@ -440,8 +441,9 @@ def get_hybrid_context(query, k=5):
 
 # --- 5. STATELESS CHAT WITH API ERROR HANDLING ---
 # Change your import at the top
-from groq import Groq # Add this
+
 # from openai import OpenAI # You can remove or comment this out to avoid the DLL block
+
 
 def handle_groq_chat(messages):
     try:
