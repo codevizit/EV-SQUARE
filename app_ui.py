@@ -355,23 +355,19 @@ st.markdown("""
 
 # --- 2. FAIL-SAFE SECRET RETRIEVAL (Updated for .env Priority) ---
 def get_secret(key):
-    """Checks os.getenv first (for .env file), then st.secrets (for Cloud)."""
-    try:
-        # Check .env/System Env first
-        val = os.getenv(key)
-        
-        # If not found in .env, check Streamlit Secrets
-        if not val and key in st.secrets:
-            val = st.secrets[key]
-            
-        if not val:
-            raise ValueError(f"Secret {key} is missing from both .env and st.secrets!")
-            
+    """Priority: Streamlit Secrets (Cloud), then .env (Local)."""
+    # 1. Check Streamlit Secrets (Works on Cloud and Local if secrets.toml exists)
+    if key in st.secrets:
+        return st.secrets[key]
+    
+    # 2. Check Environment Variables (Local .env)
+    val = os.getenv(key)
+    if val:
         return val
-    except Exception as e:
-        logger.critical(f"DEPLOYMENT ERROR: {str(e)}")
-        st.error(f"Configuration Error: {key} not found.")
-        st.stop()
+        
+    logger.critical(f"DEPLOYMENT ERROR: {key} is missing!")
+    st.error(f"Configuration Error: {key} not found.")
+    st.stop()
 
 # --- 3. RESOURCE LOADING WITH ERROR HANDLING ---
 @st.cache_resource
